@@ -1,5 +1,6 @@
 package de.streuland.commands;
 
+import de.streuland.plot.Plot;
 import de.streuland.plot.PlotManager;
 import de.streuland.plot.template.PlotTemplate;
 import de.streuland.plot.template.PlotTemplateRegistry;
@@ -96,7 +97,8 @@ public class PlotCopyCommand {
             return;
         }
 
-        if (!plotManager.isOnOwnPlot(player)) {
+        Plot current = plotManager.getPlotAt(player.getWorld(), player.getLocation().getBlockX(), player.getLocation().getBlockZ());
+        if (current == null || !player.getUniqueId().equals(current.getOwner())) {
             player.sendMessage("§cDu musst auf deinem eigenen Plot stehen!");
             return;
         }

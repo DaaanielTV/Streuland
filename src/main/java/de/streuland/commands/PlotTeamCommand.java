@@ -60,11 +60,16 @@ public class PlotTeamCommand {
             return true;
         }
         String roleId = args[3];
-        if (Role.fromId(roleId).orElse(null) == Role.OWNER) {
+        Role role = Role.fromId(roleId).orElse(null);
+        if (role == null) {
+            player.sendMessage("§cUngültige Rolle: " + roleId);
+            return true;
+        }
+        if (role == Role.OWNER) {
             player.sendMessage("§cOWNER kann nicht eingeladen werden.");
             return true;
         }
-        if (plotManager.assignRole(plot.getPlotId(), player.getUniqueId(), target, roleId)) {
+        if (plotManager.assignRole(plot.getPlotId(), player.getUniqueId(), target, role)) {
             player.sendMessage("§aSpieler eingeladen als " + roleId);
         } else {
             player.sendMessage("§cEinladung fehlgeschlagen.");
