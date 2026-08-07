@@ -31,9 +31,9 @@ public class PlotProgressionTrack {
     public static PlotProgressionTrack defaultCurrencyTrack() {
         Map<Integer, Integer> defaults = new LinkedHashMap<>();
         defaults.put(1, 0);
-        defaults.put(2, 500);
-        defaults.put(3, 1500);
-        defaults.put(4, 3500);
+        defaults.put(2, 100);
+        defaults.put(3, 300);
+        defaults.put(4, 1000);
         return new PlotProgressionTrack(Mode.CURRENCY, defaults);
     }
 

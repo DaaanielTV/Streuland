@@ -140,8 +140,9 @@ class PlotApprovalFlowTest {
             Mockito.when(world.getName()).thenReturn("world_main");
 
             Plot plot = Mockito.mock(Plot.class);
+            UUID ownerId = requester.getUniqueId();
             Mockito.when(plot.getPlotId()).thenReturn("plot_1");
-            Mockito.when(plot.getOwner()).thenReturn(requester.getUniqueId());
+            Mockito.when(plot.getOwner()).thenReturn(ownerId);
             Mockito.when(plotManager.getAllPlots()).thenReturn(Collections.singletonList(plot));
 
             return new Fixture(new PlotApprovalService(plugin, plotManager, pathGenerator, notifier), config, plotManager, requester);

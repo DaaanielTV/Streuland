@@ -44,7 +44,7 @@ public class PlotAuctionCommand {
             return true;
         }
 
-        Plot plot = plotManager.getPlotById(args[2]);
+        Plot plot = findPlot(args[2]);
         if (plot == null) {
             player.sendMessage("§cPlot nicht gefunden: " + args[2]);
             return true;
@@ -85,7 +85,7 @@ public class PlotAuctionCommand {
             return true;
         }
 
-        Plot plot = plotManager.getPlotById(args[2]);
+        Plot plot = findPlot(args[2]);
         if (plot == null) {
             player.sendMessage("§cPlot nicht gefunden: " + args[2]);
             return true;
@@ -110,14 +110,14 @@ public class PlotAuctionCommand {
             return true;
         }
 
-        Plot plot = plotManager.getPlotById(args[2]);
+        Plot plot = findPlot(args[2]);
         if (plot == null) {
             AuctionListing auction = auctionService.getAuction(args[2]);
             if (auction == null) {
                 player.sendMessage("§cPlot/Auktion nicht gefunden: " + args[2]);
                 return true;
             }
-            plot = plotManager.getPlotById(auction.getPlotId());
+            plot = findPlot(auction.getPlotId());
         }
 
         if (plot == null) {
@@ -196,5 +196,21 @@ public class PlotAuctionCommand {
 
     private String fmt(double value) {
         return String.format(Locale.US, "%,.2f", value);
+    }
+
+    private Plot findPlot(String ref) {
+        if (ref == null || ref.isBlank()) {
+            return null;
+        }
+        Plot direct = plotManager.getStorage().getPlot(ref);
+        if (direct != null) {
+            return direct;
+        }
+        for (Plot plot : plotManager.getStorage().getAllPlots()) {
+            if (plot.getPlotId().equalsIgnoreCase(ref)) {
+                return plot;
+            }
+        }
+        return null;
     }
 }

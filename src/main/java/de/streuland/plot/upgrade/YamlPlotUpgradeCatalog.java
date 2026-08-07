@@ -50,8 +50,8 @@ public final class YamlPlotUpgradeCatalog {
 
             List<PlotUpgradeRequirement> requirements = new ArrayList<>();
             for (Map<?, ?> req : section.getMapList("requirements")) {
-                String reqId = String.valueOf(req.getOrDefault("id", ""));
-                int minLevel = ((Number) req.getOrDefault("level", 1)).intValue();
+                String reqId = String.valueOf(req.get("id"));
+                int minLevel = req.get("level") instanceof Number ? ((Number) req.get("level")).intValue() : 1;
                 if (!reqId.isEmpty()) {
                     requirements.add(new PlotUpgradeRequirement(reqId, minLevel));
                 }

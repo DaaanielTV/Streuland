@@ -60,6 +60,10 @@ public class SqlitePlotStorage implements PlotStorage {
                     "area_type TEXT," +
                     "metadata TEXT" +
                     ")");
+            st.execute("CREATE TABLE IF NOT EXISTS plots_rtree_ids (" +
+                    "plot_id TEXT PRIMARY KEY," +
+                    "rtree_id INTEGER NOT NULL UNIQUE" +
+                    ")");
             st.execute("CREATE VIRTUAL TABLE IF NOT EXISTS plots_rtree USING rtree(id, minX, maxX, minZ, maxZ)");
         } catch (SQLException e) {
             throw new IllegalStateException("Failed to initialize SQLite schema", e);
@@ -74,6 +78,8 @@ public class SqlitePlotStorage implements PlotStorage {
             c.setAutoCommit(false);
             try (PreparedStatement ps = c.prepareStatement("INSERT INTO plots(id, world, center_x, center_z, size, spawn_y, owner_uuid, created_at, area_type, metadata) VALUES(?,?,?,?,?,?,?,?,?,?) " +
                     "ON CONFLICT(id) DO UPDATE SET world=excluded.world, center_x=excluded.center_x, center_z=excluded.center_z, size=excluded.size, spawn_y=excluded.spawn_y, owner_uuid=excluded.owner_uuid, created_at=excluded.created_at, area_type=excluded.area_type, metadata=excluded.metadata");
+                 PreparedStatement assignId = c.prepareStatement("INSERT INTO plots_rtree_ids(plot_id, rtree_id) VALUES(?, COALESCE((SELECT MAX(rtree_id) FROM plots_rtree_ids), 0) + 1) ON CONFLICT(plot_id) DO UPDATE SET plot_id = excluded.plot_id");
+                 PreparedStatement selectId = c.prepareStatement("SELECT rtree_id FROM plots_rtree_ids WHERE plot_id = ?");
                  PreparedStatement deleteRtree = c.prepareStatement("DELETE FROM plots_rtree WHERE id = ?");
                  PreparedStatement insertRtree = c.prepareStatement("INSERT INTO plots_rtree(id, minX, maxX, minZ, maxZ) VALUES(?,?,?,?,?)")) {
                 ps.setString(1, plot.getPlotId());
@@ -88,10 +94,22 @@ public class SqlitePlotStorage implements PlotStorage {
                 ps.setString(10, metadata);
                 ps.executeUpdate();
 
-                deleteRtree.setString(1, plot.getPlotId());
+                assignId.setString(1, plot.getPlotId());
+                assignId.executeUpdate();
+
+                int rtreeId;
+                selectId.setString(1, plot.getPlotId());
+                try (ResultSet rs = selectId.executeQuery()) {
+                    if (!rs.next()) {
+                        throw new SQLException("No rtree id assigned for plot " + plot.getPlotId());
+                    }
+                    rtreeId = rs.getInt(1);
+                }
+
+                deleteRtree.setInt(1, rtreeId);
                 deleteRtree.executeUpdate();
 
-                insertRtree.setString(1, plot.getPlotId());
+                insertRtree.setInt(1, rtreeId);
                 insertRtree.setInt(2, plot.getMinX());
                 insertRtree.setInt(3, plot.getMaxX());
                 insertRtree.setInt(4, plot.getMinZ());
@@ -109,11 +127,14 @@ public class SqlitePlotStorage implements PlotStorage {
         try (Connection c = connection()) {
             c.setAutoCommit(false);
             try (PreparedStatement ps = c.prepareStatement("DELETE FROM plots WHERE id = ?");
-                 PreparedStatement rt = c.prepareStatement("DELETE FROM plots_rtree WHERE id = ?")) {
+                 PreparedStatement rt = c.prepareStatement("DELETE FROM plots_rtree WHERE id = (SELECT rtree_id FROM plots_rtree_ids WHERE plot_id = ?)");
+                 PreparedStatement map = c.prepareStatement("DELETE FROM plots_rtree_ids WHERE plot_id = ?")) {
                 ps.setString(1, id);
                 ps.executeUpdate();
                 rt.setString(1, id);
                 rt.executeUpdate();
+                map.setString(1, id);
+                map.executeUpdate();
             }
             c.commit();
         } catch (SQLException e) {
@@ -140,7 +161,8 @@ public class SqlitePlotStorage implements PlotStorage {
     @Override
     public Optional<Plot> findNearest(String world, int x, int z, int radius) {
         String sql = "SELECT p.* FROM plots_rtree r " +
-                "JOIN plots p ON p.id = r.id " +
+                "JOIN plots_rtree_ids m ON m.rtree_id = r.id " +
+                "JOIN plots p ON p.id = m.plot_id " +
                 "WHERE p.world = ? " +
                 "AND r.minX <= ? AND r.maxX >= ? " +
                 "AND r.minZ <= ? AND r.maxZ >= ?";

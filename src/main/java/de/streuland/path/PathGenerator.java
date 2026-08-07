@@ -48,7 +48,7 @@ public class PathGenerator {
             Material.GOLD_BLOCK,
             Material.YELLOW_CONCRETE,
             Material.YELLOW_WOOL,
-            Material.RAW_GOLD_BLOCK
+            Material.ORANGE_CONCRETE
         );
     }
     

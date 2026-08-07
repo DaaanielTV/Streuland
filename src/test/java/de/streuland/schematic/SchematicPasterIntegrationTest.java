@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 class SchematicPasterIntegrationTest {
@@ -33,9 +34,8 @@ class SchematicPasterIntegrationTest {
     @Test
     void pasteFailureRollsBackWorldState() {
         World world = server.addSimpleWorld("world");
-        Player player = server.addPlayer();
+        UUID actorId = UUID.randomUUID();
         Location center = new Location(world, 10, 64, 10);
-        player.teleport(center);
 
         world.getBlockAt(10, 64, 10).setType(Material.DIRT);
         world.getBlockAt(11, 64, 10).setType(Material.DIRT);
@@ -50,7 +50,7 @@ class SchematicPasterIntegrationTest {
         SchematicPaster paster = new SchematicPaster(plugin);
         paster.setFailureAfterBlocksForTest(2);
 
-        CompletableFuture<Boolean> result = paster.pasteAsync(schematic, center, player.getUniqueId());
+        CompletableFuture<Boolean> result = paster.pasteAsync(schematic, center, actorId);
         for (int i = 0; i < 10 && !result.isDone(); i++) {
             server.getScheduler().performOneTick();
         }

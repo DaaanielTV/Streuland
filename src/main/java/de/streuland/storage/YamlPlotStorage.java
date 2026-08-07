@@ -29,7 +29,7 @@ public class YamlPlotStorage implements PlotStorage {
     public YamlPlotStorage(Path yamlDir) {
         this.yamlDir = yamlDir;
         LoaderOptions loaderOptions = new LoaderOptions();
-        this.yaml = new Yaml(new SafeConstructor(loaderOptions), createDumperOptions());
+        this.yaml = new Yaml(new SafeConstructor(loaderOptions));
         try {
             Files.createDirectories(yamlDir);
         } catch (IOException e) {

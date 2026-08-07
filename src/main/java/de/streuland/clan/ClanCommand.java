@@ -62,6 +62,10 @@ public class ClanCommand implements CommandExecutor {
                 handleWar(player, args);
                 break;
 
+            case "warinfo":
+                handleWarInfo(player);
+                break;
+
             case "peace":
                 handlePeace(player, args);
                 break;
@@ -76,10 +80,6 @@ public class ClanCommand implements CommandExecutor {
 
             case "reject":
                 handleReject(player, args);
-                break;
-
-            case "raid":
-                handleRaid(player, args);
                 break;
 
             case "setmotto":
@@ -253,8 +253,8 @@ public class ClanCommand implements CommandExecutor {
             return;
         }
 
-        if (args.length < 2) {
-            player.sendMessage("§cNutze: /clan war <ClanName>");
+        if (args.length < 3) {
+            player.sendMessage("§cNutze: /clan war <ClanName> <PlotID>");
             return;
         }
 
@@ -269,11 +269,42 @@ public class ClanCommand implements CommandExecutor {
             return;
         }
 
-        if (clanManager.declareWar(playerClan.getClanId(), targetClan.getClanId())) {
-            player.sendMessage("§4Kriegserklärung an §c" + targetClan.getName() + " §4gesendet!");
+        String targetPlotId = args[2];
+        if (clanManager.declareWar(playerClan.getClanId(), targetClan.getClanId(), targetPlotId)) {
+            player.sendMessage("§4Kriegserklärung für den Plot §c" + targetPlotId + " §4an §c" + targetClan.getName() + " §4gesendet!");
         } else {
-            player.sendMessage("§cKriegserklärung fehlgeschlagen. Dein Clan braucht mindestens 3 Mitglieder.");
+            player.sendMessage("§cKriegserklärung fehlgeschlagen. Dein Clan braucht mindestens 3 Mitglieder und der Plot muss dem Ziel-Clan gehören.");
         }
+    }
+
+    private void handleWarInfo(Player player) {
+        Clan playerClan = clanManager.getClanByPlayer(player.getUniqueId());
+        if (playerClan == null) {
+            player.sendMessage("§cDu bist in keinem Clan.");
+            return;
+        }
+
+        ClanDiplomacyManager.ActiveWar war = clanManager.getDiplomacyManager().getActiveWar(playerClan.getClanId());
+        if (war == null) {
+            player.sendMessage("§7Dein Clan befindet sich derzeit in keinem Krieg.");
+            return;
+        }
+
+        Clan attacker = clanManager.getClanById(war.getAttackerClanId());
+        Clan defender = clanManager.getClanById(war.getDefenderClanId());
+        String attackerName = attacker != null ? attacker.getName() : "?";
+        String defenderName = defender != null ? defender.getName() : "?";
+        player.sendMessage("§4========== Clan-Krieg ==========");
+        player.sendMessage("§4" + attackerName + " §7vs. §4" + defenderName);
+        player.sendMessage("§eKills: §c" + war.getTotalAttackerKills() + " §7: §c" + war.getTotalDefenderKills());
+        player.sendMessage("§eZiel-Plot: §f" + (war.getTargetPlotId() == null ? "Keiner" : war.getTargetPlotId()));
+        player.sendMessage("§eRestzeit: §f" + formatWarTime(war.getRemainingTime()));
+    }
+
+    private String formatWarTime(long millis) {
+        long hours = millis / (60 * 60 * 1000L);
+        long minutes = (millis % (60 * 60 * 1000L)) / (60 * 1000L);
+        return hours + "h " + minutes + "m";
     }
 
     private void handlePeace(Player player, String[] args) {
@@ -393,27 +424,6 @@ public class ClanCommand implements CommandExecutor {
             }
         } catch (IllegalArgumentException e) {
             player.sendMessage("§cUngültige Vorschlags-ID.");
-        }
-    }
-
-    private void handleRaid(Player player, String[] args) {
-        Clan playerClan = clanManager.getClanByPlayer(player.getUniqueId());
-        if (playerClan == null) {
-            player.sendMessage("§cDu bist in keinem Clan.");
-            return;
-        }
-
-        if (args.length < 2) {
-            player.sendMessage("§cNutze: /clan raid <ClanID>");
-            return;
-        }
-
-        try {
-            UUID targetId = UUID.fromString(args[1]);
-            clanManager.startRaid(player.getUniqueId(), targetId);
-            player.sendMessage("§aDeine Stimme für den Raid wurde gezählt!");
-        } catch (IllegalArgumentException e) {
-            player.sendMessage("§cUngültige Clan-ID.");
         }
     }
 
@@ -543,13 +553,13 @@ public class ClanCommand implements CommandExecutor {
         player.sendMessage("§e/clan members [Name] §7- Mitglieder anzeigen");
         player.sendMessage("§6--- Diplomatie ---");
         player.sendMessage("§e/clan ally <Name> §7- Allianz vorschlagen");
-        player.sendMessage("§e/clan war <Name> §7- Krieg erklären");
+        player.sendMessage("§e/clan war <Name> <PlotID> §7- Krieg erklären (1 Ziel-Plot)");
+        player.sendMessage("§e/clan warinfo §7- Kill-Stand und Restzeit anzeigen");
         player.sendMessage("§e/clan peace <Name> §7- Frieden vorschlagen");
         player.sendMessage("§e/clan proposals §7- Offene Vorschläge");
         player.sendMessage("§e/clan accept <ID> §7- Vorschlag annehmen");
         player.sendMessage("§e/clan reject <ID> §7- Vorschlag ablehnen");
         player.sendMessage("§6--- Verwaltung ---");
-        player.sendMessage("§e/clan raid <ID> §7- Für Raid stimmen");
         player.sendMessage("§e/clan setmotto <Text> §7- Setze Motto");
         player.sendMessage("§e/clan setcolor <Farbe> §7- Setze Clan-Farbe");
     }

@@ -3,6 +3,7 @@ package de.streuland.schematic;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -28,7 +29,7 @@ class SchematicTransaction {
     }
 
     void capture(Block block) {
-        snapshots.add(new BlockStateSnapshot(block.getLocation(), block.getType(), block.getData()));
+        snapshots.add(new BlockStateSnapshot(block.getLocation(), block.getType(), block.getBlockData()));
     }
 
     void rollback() {
@@ -36,7 +37,7 @@ class SchematicTransaction {
             BlockStateSnapshot snapshot = snapshots.get(i);
             Block block = snapshot.location.getBlock();
             block.setType(snapshot.type, false);
-            block.setData(snapshot.data, false);
+            block.setBlockData(snapshot.blockData, false);
         }
     }
 
@@ -63,12 +64,12 @@ class SchematicTransaction {
     private static class BlockStateSnapshot {
         private final Location location;
         private final Material type;
-        private final byte data;
+        private final BlockData blockData;
 
-        private BlockStateSnapshot(Location location, Material type, byte data) {
+        private BlockStateSnapshot(Location location, Material type, BlockData blockData) {
             this.location = location;
             this.type = type;
-            this.data = data;
+            this.blockData = blockData;
         }
     }
 }

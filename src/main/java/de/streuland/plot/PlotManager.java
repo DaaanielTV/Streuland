@@ -488,7 +488,7 @@ public class PlotManager {
                 publicPlots.add(plot);
             }
         }
-        publicPlots.sort(Comparator.comparing(plot -> contextFor(world).storage.getPlotData(plot.getPlotId()).getShowcaseTitle(), String.CASE_INSENSITIVE_ORDER)
+        publicPlots.sort(Comparator.comparing((Plot plot) -> contextFor(world).storage.getPlotData(plot.getPlotId()).getShowcaseTitle(), String.CASE_INSENSITIVE_ORDER)
                 .thenComparing(Plot::getPlotId));
         return publicPlots;
     }

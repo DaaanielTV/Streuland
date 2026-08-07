@@ -5,6 +5,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import de.streuland.plot.Plot;
+import de.streuland.plot.PlotData;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,11 +38,11 @@ public class WebServer {
 
     // Composite handler for signup-with-code (GET serves page, POST processes signup)
     private class SignUpCompositeHandler implements HttpHandler {
-        private final InvitationGateway invitationGateway;
-        private final UserGateway userGateway;
+        private final de.streuland.invite.InvitationGateway invitationGateway;
+        private final de.streuland.auth.UserGateway userGateway;
         private final de.streuland.auth.SignUpWithCodeHandler delegate;
 
-        SignUpCompositeHandler(InvitationGateway invitationGateway, UserGateway userGateway) {
+        SignUpCompositeHandler(de.streuland.invite.InvitationGateway invitationGateway, de.streuland.auth.UserGateway userGateway) {
             this.invitationGateway = invitationGateway;
             this.userGateway = userGateway;
             // Use a dedicated handler for POST to actually process signup
