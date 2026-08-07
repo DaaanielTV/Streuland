@@ -26,6 +26,7 @@ import de.streuland.plot.PlotMergeService;
 import de.streuland.plot.SplitStrategy;
 import de.streuland.plot.Plot;
 import de.streuland.plot.PlotManager;
+import de.streuland.plot.Role;
 import de.streuland.plot.biome.BiomeBonusService;
 import de.streuland.plot.biome.BiomeRuleSet;
 import de.streuland.plot.environment.PlotEnvironmentService;
@@ -117,6 +118,7 @@ public class PlotCommandExecutor implements CommandExecutor, TabCompleter {
     private final SeasonalWeatherService seasonalWeatherService;
     private final PlotFlagManager plotFlagManager;
     private final PlotUpgradeCommand plotUpgradeCommand;
+    private final PlotEnvironmentService plotEnvironmentService;
     private final PlotTeamCommand plotTeamCommand;
     private final PlotSchematicCommand plotSchematicCommand;
     private PlotCopyCommand plotCopyCommand;
@@ -124,7 +126,10 @@ public class PlotCommandExecutor implements CommandExecutor, TabCompleter {
     private final PlotHistoryCommand plotHistoryCommand;
     private final PlotMarketCommand plotMarketCommand;
     private final PlotEconomyHook plotEconomyHook;
+    private final DiscordNotifier discordNotifier;
     private final PlotApprovalService plotApprovalService;
+    private final de.streuland.clan.ClanManager clanManager;
+    private final de.streuland.movement.MovementPassService movementPassService;
     private final MessageProvider messageProvider;
     private final Map<String, java.util.function.BiFunction<Player, String[], Boolean>> moduleCommands;
     private final Map<UUID, DeleteConfirmation> pendingDeletes;
@@ -160,11 +165,15 @@ public class PlotCommandExecutor implements CommandExecutor, TabCompleter {
         this.seasonalWeatherService = seasonalWeatherService;
         this.plotFlagManager = plotFlagManager;
         this.plotUpgradeCommand = plotUpgradeCommand;
+        this.plotEnvironmentService = new PlotEnvironmentService(plotManager, plugin.getConfig());
         this.plotApprovalService = plugin instanceof de.streuland.StreulandPlugin ? ((de.streuland.StreulandPlugin) plugin).getPlotApprovalService() : null;
+        this.clanManager = plugin instanceof de.streuland.StreulandPlugin ? ((de.streuland.StreulandPlugin) plugin).getClanManager() : null;
+        this.movementPassService = plugin instanceof de.streuland.StreulandPlugin ? ((de.streuland.StreulandPlugin) plugin).getMovementPassService() : null;
         this.plotTeamCommand = new PlotTeamCommand(plotManager);
         this.plotEconomyHook = new PlotEconomyHook(plugin);
-        this.plotMarketCommand = new PlotMarketCommand(plotManager, plotMarketService);
-        this.plotBackupCommand = new PlotBackupCommand(new SnapshotService(plugin, plotManager, snapshotManager));
+        this.discordNotifier = plugin instanceof de.streuland.StreulandPlugin ? ((de.streuland.StreulandPlugin) plugin).getDiscordNotifier() : null;
+        this.plotMarketCommand = new PlotMarketCommand(plotManager, new de.streuland.market.PlotMarketService(plugin, plotManager.getStorage(), plotEconomyHook));
+        this.plotBackupCommand = new PlotBackupCommand(plotManager, new SnapshotService(plugin, plotManager, snapshotManager));
         PlotChangeJournal plotChangeJournal = new PlotChangeJournal(plugin, plotManager);
         this.plotHistoryCommand = new PlotHistoryCommand(new JournalManager(plugin, plotChangeJournal));
         this.plotSchematicCommand = new PlotSchematicCommand(new SchematicLoader(plugin), new SchematicPreview(), new SchematicPaster(plugin));
@@ -299,6 +308,8 @@ public class PlotCommandExecutor implements CommandExecutor, TabCompleter {
                 return plotUpgradeCommand.handle(player, new String[]{"upgrade", "info"});
             case "templates":
                 return plotCopyCommand != null && plotCopyCommand.handle(player, args);
+            case "wegpass":
+                return handleWegpass(player);
             default:
                 if ("copy".equals(subcommand)) {
                     return plotCopyCommand != null && plotCopyCommand.handle(player, args);
@@ -350,12 +361,57 @@ public class PlotCommandExecutor implements CommandExecutor, TabCompleter {
         return true;
     }
 
-    private boolean handleCreate(Player player) {
-        List<Plot> playerPlots = plotManager.getStorage(player.getWorld()).getPlayerPlots(player.getUniqueId());
+    private boolean quotaReached(Player player, List<Plot> playerPlots) {
+        if (clanManager != null) {
+            int clanQuota = clanManager.getClanPlotQuota(player.getUniqueId());
+            if (clanQuota > 0) {
+                int used = clanManager.getClanPlotCount(player.getUniqueId());
+                if (used >= clanQuota) {
+                    player.sendMessage("§cEuer Clan hat das Plot-Kontingent erreicht! (§f" + used + "/" + clanQuota + "§c)");
+                    return true;
+                }
+                return false;
+            }
+        }
         int maxPlots = plotManager.getMaxPlotsPerPlayer(player.getWorld());
         if (playerPlots.size() >= maxPlots) {
             player.sendMessage("§cDu kannst maximal " + maxPlots + " Plots besitzen! (§f" + playerPlots.size() + "/" + maxPlots + "§c)");
             player.sendMessage("§7Nutze /plot list, um deine aktuellen Plots zu sehen.");
+            return true;
+        }
+        return false;
+    }
+
+    private boolean handleWegpass(Player player) {
+        if (movementPassService == null) {
+            player.sendMessage("§cDer Wegpass ist derzeit deaktiviert.");
+            return true;
+        }
+        if (movementPassService.isActive(player.getUniqueId())) {
+            player.sendMessage("§aDein Wegpass ist noch aktiv! (§f" + formatDuration(movementPassService.getRemainingMillis(player.getUniqueId())) + "§a)");
+            return true;
+        }
+        if (movementPassService.purchase(player)) {
+            player.sendMessage("§aWegpass gekauft! Du kannst nun §f" + formatDuration(movementPassService.getRemainingMillis(player.getUniqueId()))
+                    + " §afremde Wege erkunden.");
+            return true;
+        }
+        double balance = plotEconomyHook != null ? plotEconomyHook.getBalance(player.getUniqueId()) : 0D;
+        player.sendMessage("§cKauf fehlgeschlagen! Der Wegpass kostet §f" + (int) movementPassService.getPrice()
+                + " §cGuthaben (§f" + (int) balance + " §cvon §f" + (int) movementPassService.getPrice() + "§c).");
+        return true;
+    }
+
+    private String formatDuration(long millis) {
+        long totalMinutes = millis / 60_000L;
+        long hours = totalMinutes / 60L;
+        long minutes = totalMinutes % 60L;
+        return hours + "h " + minutes + "min";
+    }
+
+    private boolean handleCreate(Player player) {
+        List<Plot> playerPlots = plotManager.getStorage(player.getWorld()).getPlayerPlots(player.getUniqueId());
+        if (quotaReached(player, playerPlots)) {
             return true;
         }
 
@@ -366,14 +422,22 @@ public class PlotCommandExecutor implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        boolean isFirstPlot = plotManager.getPlotsByOwner(player.getUniqueId()).isEmpty();
         player.sendMessage("§eSuche nach einem Plot-Ort...");
         plotManager.createPlotAsync(player.getUniqueId(), player.getWorld()).thenAccept(plot -> {
             if (plot != null) {
                 List<PathGenerator.BlockPosition> pathBlocks = pathGenerator.generatePath(plot);
                 plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, () -> {
                     pathGenerator.buildPathBlocks(pathBlocks);
+                    if (clanManager != null) {
+                        clanManager.registerPlot(player.getUniqueId(), plot.getPlotId());
+                    }
                     player.sendMessage("§aPlot erstellt und beansprucht! Lage: " + plot.getCenterX() + ", " + plot.getCenterZ());
-                    player.sendMessage("§aNutze /plot home um dorthin zu teleportieren");
+                    if (isFirstPlot) {
+                        teleportToPlot(player, plot, "§aDein erstes Grundstück! Du wurdest automatisch dorthin gebracht.");
+                    } else {
+                        player.sendMessage("§aNutze /plot home um dorthin zu teleportieren");
+                    }
                     sendActionBar(player, msg("messages.plot.action.created", "&aPlot created at X {0}, Z {1}.", plot.getCenterX(), plot.getCenterZ()));
                     sendTeleportHint(player, plot.getPlotId());
                     notifyLargeClaim(player.getName(), plot);
@@ -393,13 +457,14 @@ public class PlotCommandExecutor implements CommandExecutor, TabCompleter {
         Map<String, Object> extras = new HashMap<>();
         extras.put("title", "Large plot claim");
         extras.put("description", playerName + " claimed " + plot.getPlotId() + " (" + plot.getSize() + "x" + plot.getSize() + ")");
-        discordNotifier.sendWebhook("plot-alerts", "Large plot claimed", extras);
+        if (discordNotifier != null) {
+            discordNotifier.sendWebhook("plot-alerts", "Large plot claimed", extras);
+        }
     }
 
     private boolean handleClaim(Player player) {
         List<Plot> playerPlots = plotManager.getStorage(player.getWorld()).getPlayerPlots(player.getUniqueId());
-        if (playerPlots.size() >= plotManager.getMaxPlotsPerPlayer(player.getWorld())) {
-            player.sendMessage("§cDu kannst maximal " + plotManager.getMaxPlotsPerPlayer(player.getWorld()) + " Plots besitzen!");
+        if (quotaReached(player, playerPlots)) {
             return true;
         }
 
@@ -407,6 +472,10 @@ public class PlotCommandExecutor implements CommandExecutor, TabCompleter {
         if (claimedPlot == null) {
             player.sendMessage("§cHier gibt es keinen beanspruchbaren Plot!");
             return true;
+        }
+
+        if (clanManager != null) {
+            clanManager.registerPlot(player.getUniqueId(), claimedPlot.getPlotId());
         }
 
         // Generate and build path
