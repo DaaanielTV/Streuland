@@ -13,17 +13,27 @@ public class ClanDiplomacyManager {
     private final Map<UUID, Clan> clans;
     private final Map<UUID, DiplomaticProposal> pendingProposals;
     private final Map<UUID, ActiveWar> activeWars;
+    private final WarResolutionHandler warHandler;
 
-    private static final long WAR_DURATION_MS = 24 * 60 * 60 * 1000L;
     private static final long PEACE_TREATY_DURATION_MS = 12 * 60 * 60 * 1000L;
     private static final int WAR_VOTE_THRESHOLD = 3;
     private static final long PROPOSAL_TIMEOUT_MS = 5 * 60 * 1000L;
 
-    public ClanDiplomacyManager(JavaPlugin plugin, Map<UUID, Clan> clans) {
+    public interface WarResolutionHandler {
+        void onWarEnded(ActiveWar war, Clan winner, Clan loser);
+    }
+
+    public ClanDiplomacyManager(JavaPlugin plugin, Map<UUID, Clan> clans, WarResolutionHandler warHandler) {
         this.plugin = plugin;
         this.clans = clans;
+        this.warHandler = warHandler;
         this.pendingProposals = new ConcurrentHashMap<>();
         this.activeWars = new ConcurrentHashMap<>();
+    }
+
+    private long getWarDurationMs() {
+        long hours = plugin.getConfig().getLong("clan.war.duration-hours", 24);
+        return Math.max(1, hours) * 60 * 60 * 1000L;
     }
 
     public enum ProposalType {
@@ -33,6 +43,10 @@ public class ClanDiplomacyManager {
     }
 
     public DiplomaticProposal createProposal(UUID fromClanId, UUID toClanId, ProposalType type) {
+        return createProposal(fromClanId, toClanId, type, null);
+    }
+
+    public DiplomaticProposal createProposal(UUID fromClanId, UUID toClanId, ProposalType type, String targetPlotId) {
         Clan fromClan = clans.get(fromClanId);
         Clan toClan = clans.get(toClanId);
 
@@ -62,7 +76,8 @@ public class ClanDiplomacyManager {
                 fromClanId,
                 toClanId,
                 type,
-                System.currentTimeMillis()
+                System.currentTimeMillis(),
+                targetPlotId
         );
 
         pendingProposals.put(proposal.getProposalId(), proposal);
@@ -107,7 +122,7 @@ public class ClanDiplomacyManager {
                 success = createAlliance(requestingClan, targetClan);
                 break;
             case WAR_DECLARATION:
-                success = startWar(requestingClan, targetClan);
+                success = startWar(requestingClan, targetClan, proposal.getTargetPlotId());
                 break;
             case PEACE_TREATY:
                 success = signPeaceTreaty(requestingClan, targetClan);
@@ -152,7 +167,7 @@ public class ClanDiplomacyManager {
         return true;
     }
 
-    private boolean startWar(Clan attacker, Clan defender) {
+    private boolean startWar(Clan attacker, Clan defender, String targetPlotId) {
         attacker.setRelationship(defender.getClanId(), DiplomacyStatus.WAR);
         defender.setRelationship(attacker.getClanId(), DiplomacyStatus.WAR);
 
@@ -161,7 +176,8 @@ public class ClanDiplomacyManager {
                 attacker.getClanId(),
                 defender.getClanId(),
                 System.currentTimeMillis(),
-                WAR_DURATION_MS
+                getWarDurationMs(),
+                targetPlotId
         );
 
         activeWars.put(war.getWarId(), war);
@@ -179,7 +195,7 @@ public class ClanDiplomacyManager {
             if ((war.getAttackerClanId().equals(proposer.getClanId()) &&
                     war.getDefenderClanId().equals(acceptor.getClanId())) ||
                     (war.getAttackerClanId().equals(acceptor.getClanId()) &&
-                            war.getDefenderClanId().equals(proposer.getClanId())))) {
+                            war.getDefenderClanId().equals(proposer.getClanId()))) {
                 warToRemove = war;
                 break;
             }
@@ -193,11 +209,11 @@ public class ClanDiplomacyManager {
         return true;
     }
 
-    public boolean declareWar(UUID attackerId, UUID targetId) {
+    public boolean declareWar(UUID attackerId, UUID targetId, String targetPlotId) {
         Clan attacker = clans.get(attackerId);
         Clan target = clans.get(targetId);
 
-        if (attacker == null || target == null) {
+        if (attacker == null || target == null || targetPlotId == null || targetPlotId.isEmpty()) {
             return false;
         }
 
@@ -205,7 +221,7 @@ public class ClanDiplomacyManager {
             return false;
         }
 
-        DiplomaticProposal proposal = createProposal(attackerId, targetId, ProposalType.WAR_DECLARATION);
+        DiplomaticProposal proposal = createProposal(attackerId, targetId, ProposalType.WAR_DECLARATION, targetPlotId);
         return proposal != null;
     }
 
@@ -323,22 +339,38 @@ public class ClanDiplomacyManager {
         }
 
         for (ActiveWar war : expiredWars) {
-            Clan attacker = clans.get(war.getAttackerClanId());
-            Clan defender = clans.get(war.getDefenderClanId());
-
-            if (attacker != null) {
-                attacker.setRelationship(defender.getClanId(), DiplomacyStatus.NEUTRAL);
-            }
-            if (defender != null) {
-                defender.setRelationship(attacker.getClanId(), DiplomacyStatus.NEUTRAL);
-            }
-
-            if (attacker != null && defender != null) {
-                Bukkit.broadcastMessage("§6[Clan] Der Krieg zwischen §c" + attacker.getName() + " §6und §c" + defender.getName() + " §6ist beendet!");
-            }
-
-            activeWars.remove(war.getWarId());
+            endWar(war);
         }
+    }
+
+    /**
+     * Beendet einen Krieg: Die Seite mit mehr Kills gewinnt und erhält den Ziel-Plot.
+     * Bei Kill-Gleichstand behält der Verteidiger den Plot.
+     */
+    public void endWar(ActiveWar war) {
+        Clan attacker = clans.get(war.getAttackerClanId());
+        Clan defender = clans.get(war.getDefenderClanId());
+
+        if (attacker == null || defender == null) {
+            activeWars.remove(war.getWarId());
+            return;
+        }
+
+        Clan winner = war.getTotalAttackerKills() > war.getTotalDefenderKills() ? attacker : defender;
+        Clan loser = winner.getClanId().equals(attacker.getClanId()) ? defender : attacker;
+
+        if (warHandler != null) {
+            warHandler.onWarEnded(war, winner, loser);
+        }
+
+        winner.setRelationship(loser.getClanId(), DiplomacyStatus.NEUTRAL);
+        loser.setRelationship(winner.getClanId(), DiplomacyStatus.NEUTRAL);
+
+        activeWars.remove(war.getWarId());
+
+        Bukkit.broadcastMessage("§6[Clan-Krieg] Der Krieg zwischen §c" + attacker.getName() + " §6und §c" + defender.getName()
+                + " §6ist beendet! §a" + winner.getName() + " §6gewinnt mit §c" + war.getTotalAttackerKills()
+                + " §6zu §c" + war.getTotalDefenderKills() + " §6Kills!");
     }
 
     public void cleanupExpiredProposals() {
@@ -365,7 +397,7 @@ public class ClanDiplomacyManager {
 
     private void broadcastWarMessage(Clan attacker, Clan defender) {
         Bukkit.broadcastMessage("§4[Clan-Krieg] §c" + attacker.getName() + " §4hat den Krieg gegen §c" + defender.getName() + " §4erklärt!");
-        Bukkit.broadcastMessage("§4[Clan-Krieg] Der Krieg dauert §c" + (WAR_DURATION_MS / (60 * 60 * 1000)) + " Stunden!");
+        Bukkit.broadcastMessage("§4[Clan-Krieg] Der Krieg dauert §c" + (getWarDurationMs() / (60 * 60 * 1000)) + " Stunden!");
     }
 
     private void broadcastPeaceMessage(Clan clanA, Clan clanB) {
@@ -378,15 +410,21 @@ public class ClanDiplomacyManager {
         private final UUID targetClanId;
         private final ProposalType type;
         private final long createdAt;
+        private final String targetPlotId;
         private boolean accepted;
         private boolean rejected;
 
         public DiplomaticProposal(UUID proposalId, UUID requestingClanId, UUID targetClanId, ProposalType type, long createdAt) {
+            this(proposalId, requestingClanId, targetClanId, type, createdAt, null);
+        }
+
+        public DiplomaticProposal(UUID proposalId, UUID requestingClanId, UUID targetClanId, ProposalType type, long createdAt, String targetPlotId) {
             this.proposalId = proposalId;
             this.requestingClanId = requestingClanId;
             this.targetClanId = targetClanId;
             this.type = type;
             this.createdAt = createdAt;
+            this.targetPlotId = targetPlotId;
             this.accepted = false;
             this.rejected = false;
         }
@@ -405,6 +443,10 @@ public class ClanDiplomacyManager {
 
         public ProposalType getType() {
             return type;
+        }
+
+        public String getTargetPlotId() {
+            return targetPlotId;
         }
 
         public long getCreatedAt() {
@@ -438,15 +480,21 @@ public class ClanDiplomacyManager {
         private final UUID defenderClanId;
         private final long startTime;
         private final long duration;
+        private final String targetPlotId;
         private final Map<UUID, Integer> attackerKills;
         private final Map<UUID, Integer> defenderKills;
 
         public ActiveWar(UUID warId, UUID attackerClanId, UUID defenderClanId, long startTime, long duration) {
+            this(warId, attackerClanId, defenderClanId, startTime, duration, null);
+        }
+
+        public ActiveWar(UUID warId, UUID attackerClanId, UUID defenderClanId, long startTime, long duration, String targetPlotId) {
             this.warId = warId;
             this.attackerClanId = attackerClanId;
             this.defenderClanId = defenderClanId;
             this.startTime = startTime;
             this.duration = duration;
+            this.targetPlotId = targetPlotId;
             this.attackerKills = new ConcurrentHashMap<>();
             this.defenderKills = new ConcurrentHashMap<>();
         }
@@ -461,6 +509,10 @@ public class ClanDiplomacyManager {
 
         public UUID getDefenderClanId() {
             return defenderClanId;
+        }
+
+        public String getTargetPlotId() {
+            return targetPlotId;
         }
 
         public long getStartTime() {

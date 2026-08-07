@@ -70,6 +70,14 @@ path:
   # Whether to use simple straight paths or try to curve slightly
   use-curves: true
 
+# Clan warfare (Chunk-Wars)
+clan:
+  war:
+    # Duration of a declared war in hours (winner = more kills, tie = defender keeps plot)
+    duration-hours: 24
+    # Fee per losing member paid to the winning clan leader on war end
+    loser-fee: 500
+
 # Protection settings
 protection:
   # Allow visitors to interact with plots (doors, buttons, etc)
