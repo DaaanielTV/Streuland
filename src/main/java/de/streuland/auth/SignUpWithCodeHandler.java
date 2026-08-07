@@ -10,7 +10,6 @@ import de.streuland.security.JwtUtil;
 
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
-import javax.xml.bind.DatatypeConverter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -64,7 +63,7 @@ public class SignUpWithCodeHandler implements HttpHandler {
         try {
             String salt = generateSalt();
             String passwordHash = hashPassword(password.toCharArray(), salt);
-            com.streuland.auth.User newUser = userGateway.createUser(username, email, passwordHash, salt, inviteCode, null);
+            de.streuland.auth.User newUser = userGateway.createUser(username, email, passwordHash, salt, inviteCode, null);
             String token = JwtUtil.createToken(newUser.id, 24 * 60 * 60 * 1000L, getJwtSecret());
             Map<String, String> resp = new HashMap<>();
             resp.put("userId", newUser.id);
@@ -85,17 +84,36 @@ public class SignUpWithCodeHandler implements HttpHandler {
     private String generateSalt() {
         byte[] salt = new byte[16];
         SECURE_RANDOM.nextBytes(salt);
-        return DatatypeConverter.printHexBinary(salt).toLowerCase();
+        return toHex(salt);
     }
 
     private String hashPassword(char[] password, String saltHex) {
         try {
-            PBEKeySpec spec = new PBEKeySpec(password, DatatypeConverter.parseHexBinary(saltHex), PBKDF2_ITERATIONS, PBKDF2_KEY_LENGTH);
+            PBEKeySpec spec = new PBEKeySpec(password, fromHex(saltHex), PBKDF2_ITERATIONS, PBKDF2_KEY_LENGTH);
             SecretKeyFactory skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-            return DatatypeConverter.printHexBinary(skf.generateSecret(spec).getEncoded()).toLowerCase();
+            return toHex(skf.generateSecret(spec).getEncoded());
         } catch (Exception e) {
             throw new IllegalStateException("Failed to hash password", e);
         }
+    }
+
+    private static String toHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder(bytes.length * 2);
+        for (byte b : bytes) {
+            sb.append(Character.forDigit((b >> 4) & 0xF, 16));
+            sb.append(Character.forDigit(b & 0xF, 16));
+        }
+        return sb.toString().toLowerCase();
+    }
+
+    private static byte[] fromHex(String hex) {
+        int len = hex.length();
+        byte[] bytes = new byte[len / 2];
+        for (int i = 0; i < len; i += 2) {
+            bytes[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4)
+                    + Character.digit(hex.charAt(i + 1), 16));
+        }
+        return bytes;
     }
 
     private void respond(HttpExchange exchange, int status, String body) throws IOException {

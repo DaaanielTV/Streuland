@@ -19,7 +19,7 @@ class PlotBackupOperationsServiceTest {
     void createBackupWritesVersionedAuditRecord() {
         PlotBackupCoordinator coordinator = Mockito.mock(PlotBackupCoordinator.class);
         PlotAuditLogService audit = new PlotAuditLogService(100);
-        when(coordinator.takeSnapshot("plot_1", Mockito.any(), Mockito.anyString(), Mockito.anyString()))
+        when(coordinator.takeSnapshot(Mockito.eq("plot_1"), Mockito.any(), Mockito.anyString(), Mockito.anyString()))
                 .thenReturn(CompletableFuture.completedFuture("snap_1"));
         when(coordinator.resolvePlotId("plot_1")).thenReturn(Optional.of("plot_1"));
 

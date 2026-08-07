@@ -94,6 +94,17 @@ public class PlotStorage {
         config.set("rewards.stats", new HashMap<>(data.getStatBonuses()));
         config.set("flags", new HashMap<>(data.getFlagOverrides()));
         config.set("upgrades", PlotUpgradePersistence.serialize(data.getProgressionState()));
+        config.set("featured", data.isFeatured());
+        config.set("showcase.public", data.isPublicVisitEnabled());
+        config.set("showcase.title", data.getShowcaseTitle());
+        config.set("showcase.description", data.getShowcaseDescription());
+        config.set("showcase.tags", new ArrayList<>(data.getShowcaseTags()));
+        config.set("showcase.spawn.x", data.getShowcaseSpawnX());
+        config.set("showcase.spawn.y", data.getShowcaseSpawnY());
+        config.set("showcase.spawn.z", data.getShowcaseSpawnZ());
+        config.set("environment.selectedBiome", data.getSelectedBiome());
+        config.set("environment.weatherLocked", data.isWeatherLocked());
+        config.set("environment.cosmetics", new HashMap<>(data.getEnvironmentCosmetics()));
 
         for (Map.Entry<String, QuestProgress> entry : data.getQuestProgress().entrySet()) {
             String base = "quests.progress." + entry.getKey();

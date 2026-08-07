@@ -39,7 +39,6 @@ public class ProtectionListener implements Listener {
         this.plotFlagManager = plotFlagManager;
         this.messageProvider = messageProvider;
         this.allowVisitorInteract = plugin.getConfig().getBoolean("protection.allow-visitor-interact", false);
-        this.messageProvider = new MessageProvider(plugin);
         this.accessController = new PlotAccessController(plotManager);
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }

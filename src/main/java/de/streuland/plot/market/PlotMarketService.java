@@ -62,14 +62,12 @@ public class PlotMarketService {
                              DistrictManager districtManager,
                              PlotAnalyticsService analyticsService,
                              Economy economy, DiscordNotifier discordNotifier) {
-                             Economy economy,
-                             PricingEngine pricingEngine) {
         this.plugin = plugin;
         this.plotManager = plotManager;
         this.districtManager = districtManager;
         this.analyticsService = analyticsService;
         this.economy = economy;
-        this.pricingEngine = pricingEngine;
+        this.pricingEngine = null;
         this.gson = new GsonBuilder().setPrettyPrinting().create();
         this.discordNotifier = discordNotifier;
         this.marketFile = new java.io.File(plugin.getDataFolder(), "market.json");

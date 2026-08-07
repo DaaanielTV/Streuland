@@ -61,8 +61,15 @@ public class DashboardDataExporter {
                 .append("\"tags\":[").append(formatTags(plotData)).append("],")
                 .append("\"spawnX\":").append(resolveSpawnX(plot, plotData)).append(',')
                 .append("\"spawnY\":").append(resolveSpawnY(plot, plotData)).append(',')
-                .append("\"spawnZ\":").append(resolveSpawnZ(plot, plotData))
-                .append("}}");
+                .append("\"spawnZ\":").append(resolveSpawnZ(plot, plotData));
+        if (district != null) {
+            json.append(',')
+                .append("\"districtId\":\"").append(escape(district.getId())).append("\",")
+                .append("\"districtName\":\"").append(escape(district.getName())).append("\",")
+                .append("\"districtSharedBank\":").append(district.isSharedBankEnabled()).append(',')
+                .append("\"districtHasSpawn\":").append(district.hasSpawn());
+        }
+        json.append("}}");
         }
         json.append("]}");
         return json.toString();

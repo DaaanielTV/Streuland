@@ -658,7 +658,7 @@ public class RestApiController implements Listener {
 
             // Export invites as CSV
             if ("GET".equalsIgnoreCase(method) && "/api/dashboard/ops/invitations/export".equals(path)) {
-                List<InvitationCode> list = InMemoryInvitationStore.listAll();
+                List<InvitationCode> list = invitationGateway.listAll();
                 String csv = toInviteCsv(list);
                 try {
                     byte[] bytes = csv.getBytes(StandardCharsets.UTF_8);

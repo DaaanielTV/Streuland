@@ -55,7 +55,7 @@ public class ValidateInvitationHandler implements HttpHandler {
             resp.put("valid", Instant.now().isBefore(exp) && (c.maxUses == null || c.uses < c.maxUses) && !c.isRevoked);
         } else {
             resp.put("expiresAt", null);
-            resp.put("valid", c.maxUses == null || c.uses < c.maxUses) && !c.isRevoked;
+            resp.put("valid", (c.maxUses == null || c.uses < c.maxUses) && !c.isRevoked);
         }
         resp.put("serverId", c.serverId);
         resp.put("allowedRoles", c.allowedRoles);

@@ -214,7 +214,7 @@ public class PlotApprovalService {
     }
 
     private long getExpirationSeconds() {
-        return Math.max(5L, plugin.getConfig().getLong("plot.approval.expiration-seconds", 90L));
+        return Math.max(1L, plugin.getConfig().getLong("plot.approval.expiration-seconds", 90L));
     }
 
     private boolean executeApprovalAction(PlotApprovalRequest request) {

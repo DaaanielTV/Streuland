@@ -13,8 +13,8 @@
   <description>Plotsystem für Paper 1.16.5 mit Vanilla-Weltgenerierung</description>
 
   <properties>
-    <maven.compiler.source>8</maven.compiler.source>
-    <maven.compiler.target>8</maven.compiler.target>
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <junit.version>5.10.2</junit.version>
     <mockito.version>5.11.0</mockito.version>
@@ -29,6 +29,10 @@
       <id>jitpack.io</id>
       <url>https://jitpack.io</url>
     </repository>
+    <repository>
+      <id>spigot-snapshots</id>
+      <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
+    </repository>
   </repositories>
 
   <dependencies>
@@ -40,7 +44,7 @@
     </dependency>
 
     <dependency>
-      <groupId>net.milkbowl.vault</groupId>
+      <groupId>com.github.MilkBowl</groupId>
       <artifactId>VaultAPI</artifactId>
       <version>1.7</version>
       <scope>provided</scope>
@@ -49,7 +53,7 @@
     <dependency>
       <groupId>org.yaml</groupId>
       <artifactId>snakeyaml</artifactId>
-      <version>2.2</version>
+      <version>1.33</version>
     </dependency>
 
     <dependency>
@@ -81,6 +85,20 @@
       <groupId>org.mockito</groupId>
       <artifactId>mockito-core</artifactId>
       <version>5.11.0</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>com.github.seeseemelk</groupId>
+      <artifactId>MockBukkit-v1.16</artifactId>
+      <version>1.5.2</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>it.unimi.dsi</groupId>
+      <artifactId>fastutil</artifactId>
+      <version>8.5.12</version>
       <scope>test</scope>
     </dependency>
 

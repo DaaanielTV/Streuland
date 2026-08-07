@@ -48,10 +48,11 @@ class SignUpFlowTest {
         code.maxUses = null;
         code.isRevoked = false;
         when(inviteGate.getByCode("INVITE")).thenReturn(code);
+        when(inviteGate.consumeIfValid(eq("INVITE"), any())).thenReturn(true);
 
         // Prepare new user
         User user = User.create("user-1", "alice", "alice@example.com", "server-1", code.id);
-        when(userGate.createUser(eq("alice"), eq("alice@example.com"), anyString(), anyString(), eq(code.id), eq("server-1"))).thenReturn(user);
+        when(userGate.createUser(eq("alice"), eq("alice@example.com"), anyString(), anyString(), eq("INVITE"), any())).thenReturn(user);
 
         // Build handler with a secret
         SignUpWithCodeHandler handler = new SignUpWithCodeHandler(inviteGate, userGate, "test-secret");
@@ -68,8 +69,8 @@ class SignUpFlowTest {
         assertTrue(obj.has("userId"));
         assertTrue(obj.has("token"));
 
-        // Ensure invite usage is incremented
-        verify(inviteGate).incrementUses(code.id);
+        // Ensure invite usage is consumed
+        verify(inviteGate).consumeIfValid(eq("INVITE"), any());
     }
 
     @Test

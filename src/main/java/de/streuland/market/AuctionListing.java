@@ -22,7 +22,7 @@ public class AuctionListing {
     private final DecayType decayType;
     private final double decayPerHour;
     private final long createdAt;
-    private final long endsAt;
+    private long endsAt;
     private final long extensionMinutes;
     private final long durationHours;
     private UUID winningBidder;

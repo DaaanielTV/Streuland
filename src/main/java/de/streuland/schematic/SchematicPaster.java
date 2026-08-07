@@ -2,88 +2,34 @@ package de.streuland.schematic;
 
 import de.streuland.transaction.TransactionManager;
 import de.streuland.transaction.WorldTransaction;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.block.BlockState;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Applies schematic-like block placements with transactional rollback support.
  */
 public class SchematicPaster {
-    private final TransactionManager transactionManager;
-    private volatile int failAfterPlacements = -1;
-
-    public SchematicPaster(TransactionManager transactionManager) {
-        this.transactionManager = transactionManager;
-    }
-
-    public boolean paste(String transactionId,
-                         Location origin,
-                         List<BlockPlacement> placements,
-                         Runnable persistMetadata) {
-        String id = transactionId == null || transactionId.isEmpty()
-            ? "schematic_" + UUID.randomUUID()
-            : transactionId;
-        WorldTransaction tx = transactionManager.begin(id, origin);
-        int placed = 0;
-        try {
-            for (BlockPlacement placement : placements) {
-                Location location = placement.getLocation();
-                tx.recordBlock(location, location.getBlock().getState());
-                tx.applyChange(location, placement.getAfterState());
-                placed++;
-                if (failAfterPlacements >= 0 && placed > failAfterPlacements) {
-                    throw new IllegalStateException("Simulated schematic placement failure at index " + placed);
-                }
-            }
-            persistMetadata.run();
-            tx.commit();
-            return true;
-        } catch (Exception ex) {
-            tx.rollback();
-            return false;
-        } finally {
-            transactionManager.close(id);
-        }
-    }
-
-    public void setFailAfterPlacements(int failAfterPlacements) {
-        this.failAfterPlacements = failAfterPlacements;
-    }
-
-    public static class BlockPlacement {
-        private final Location location;
-        private final BlockState afterState;
-
-        public BlockPlacement(Location location, BlockState afterState) {
-            this.location = location;
-            this.afterState = afterState;
-        }
-
-        public Location getLocation() {
-            return location;
-        }
-
-        public BlockState getAfterState() {
-            return afterState;
-        }
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.World;
-import org.bukkit.entity.Player;
-import org.bukkit.plugin.java.JavaPlugin;
-
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-
-public class SchematicPaster {
     private final JavaPlugin plugin;
+    private final TransactionManager transactionManager;
     private int failureAfterBlocks = -1;
+    private int failAfterPlacements = -1;
 
     public SchematicPaster(JavaPlugin plugin) {
         this.plugin = plugin;
+        this.transactionManager = null;
+    }
+
+    public SchematicPaster(TransactionManager transactionManager) {
+        this.plugin = null;
+        this.transactionManager = transactionManager;
     }
 
     public CompletableFuture<Boolean> pasteAsync(Schematic schematic, Location center, UUID actor) {
@@ -126,7 +72,62 @@ public class SchematicPaster {
         return future;
     }
 
+    public boolean paste(String transactionId,
+                         Location origin,
+                         List<BlockPlacement> placements,
+                         Runnable persistMetadata) {
+        if (transactionManager == null) {
+            return false;
+        }
+        String id = transactionId == null || transactionId.isEmpty()
+            ? "schematic_" + UUID.randomUUID()
+            : transactionId;
+        WorldTransaction tx = transactionManager.begin(id, origin);
+        int placed = 0;
+        try {
+            for (BlockPlacement placement : placements) {
+                Location location = placement.getLocation();
+                tx.recordBlock(location, location.getBlock().getState());
+                tx.applyChange(location, placement.getAfterState());
+                placed++;
+                if (failAfterPlacements >= 0 && placed > failAfterPlacements) {
+                    throw new IllegalStateException("Simulated schematic placement failure at index " + placed);
+                }
+            }
+            persistMetadata.run();
+            tx.commit();
+            return true;
+        } catch (Exception ex) {
+            tx.rollback();
+            return false;
+        } finally {
+            transactionManager.close(id);
+        }
+    }
+
+    public void setFailAfterPlacements(int failAfterPlacements) {
+        this.failAfterPlacements = failAfterPlacements;
+    }
+
     void setFailureAfterBlocksForTest(int failureAfterBlocks) {
         this.failureAfterBlocks = failureAfterBlocks;
+    }
+
+    public static class BlockPlacement {
+        private final Location location;
+        private final BlockState afterState;
+
+        public BlockPlacement(Location location, BlockState afterState) {
+            this.location = location;
+            this.afterState = afterState;
+        }
+
+        public Location getLocation() {
+            return location;
+        }
+
+        public BlockState getAfterState() {
+            return afterState;
+        }
     }
 }

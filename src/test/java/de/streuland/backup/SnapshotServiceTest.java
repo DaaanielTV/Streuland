@@ -23,6 +23,7 @@ import java.util.logging.Logger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -55,7 +56,7 @@ class SnapshotServiceTest {
         }
 
         PlotSnapshot snapshot = new PlotSnapshot(snapshotId, "1", UUID.randomUUID(), System.currentTimeMillis(), Collections.emptyList());
-        when(snapshotManager.createSnapshot(eq(plot), any())).thenReturn(CompletableFuture.completedFuture(snapshot));
+        when(snapshotManager.createSnapshot(eq(plot), any(), any(), any())).thenReturn(CompletableFuture.completedFuture(snapshot));
 
         SnapshotService service = new SnapshotService(plugin, plotManager, snapshotManager, tempDir, 14,
                 Clock.fixed(Instant.parse("2026-01-15T00:00:00Z"), ZoneOffset.UTC));
