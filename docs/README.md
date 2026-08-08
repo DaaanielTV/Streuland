@@ -4,6 +4,7 @@ This directory contains the technical documentation for the Streuland Plot Plugi
 
 ## Contents
 
+- `features/one-chunk-civilization.md` - clan system, chunk wars, wegpass, market stands, shafts
 - `architecture/system-overview.md` - high-level runtime architecture and module map
 - `architecture/code-walkthrough.md` - source-tree orientation and implementation notes
 - `api/core-components.md` - core components and responsibilities
