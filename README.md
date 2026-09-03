@@ -1,124 +1,115 @@
 # Streuland Plot Plugin
 
-Streuland Plot Plugin is an open-source Paper plugin for managing player plots in a vanilla-style Minecraft world. It provides protected plots, path generation, district progression, environment controls, a marketplace, approvals, and an optional web dashboard.
+> Open-Source Paper Plugin für ein Vanilla-nahes Grundstückssystem – kein hässliches Grid, sondern natürliche Plots in einer normalen Minecraft Welt.
 
-## Project Overview
+Entstanden am 01.02.2025 – first commit `bfbadcb` mit 28 Dateien (siehe Screenshot). Der Ursprung: Ich mochte "CB Nature" auf GrieferGames, aber der Citybuild war irgendwann tot und wurde nur noch für AFK-Farmen genutzt. Ich wusste, man kann die normale Vanilla World-Gen nutzen und damit viel bessere, natürlichere Plots bauen als das Standard-Grid.
 
-This repository contains the full Java source, tests, and documentation for the Streuland plugin (`de.streuland`). It is built with Maven and targets Paper `1.16.5`.
+### Was ist Streuland?
 
-## Features / Purpose
+Streuland ist ein Paper 1.16.5 Plugin, das ein zufälliges Plot-System innerhalb von normalen Vanilla-Welten erzeugt. Plots werden zufällig verteilt (nicht Grid-basiert), automatisch über Pfade verbunden und sind vollständig für den Besitzer geschützt.
 
-- Plot creation, ownership, trust/untrust, deletion workflows
-- Area-based protection model (`PATH`, `PLOT_UNCLAIMED`, `PLOT_CLAIMED`)
-- Automatic path generation and world-area partitioning
-- District progression and neighborhood systems
-- Plot upgrades, market listings, and approval workflows
-- YAML + SQLite-backed storage components
-- Optional REST/WebSocket dashboard assets
-- Clan system with plot quota, diplomacy, chunk wars and war rewards
-- Player market stands (`/markt`)
-- Movement restriction with purchasable Wegpass
-- Custom plot role definitions
+Das volle Java-Projekt mit Maven, gebaut für Paper `1.16.5`.
+
+## Features / Zweck
+
+- **Plot Verwaltung** – erstellen, besitzen, trust/untrust, löschen
+- **Schutzmodell** – `PATH`, `PLOT_UNCLAIMED`, `PLOT_CLAIMED`
+- **Automatische Weggenerierung** – kein Grid, Wege verbinden Plots natürlich
+- **District & Nachbarschaften** – Progression statt einfach nur Claims
+- **Plot Upgrades, Markt & Freigaben** – Wirtschaft + Approval Workflows
+- **Speicherung** – YAML + SQLite
+- **Optionales Dashboard** – REST/WebSocket Assets
+- **Clan System** – Quota, Diplomatie, Chunk Wars & Belohnungen
+- **Marktstände** – `/markt`
+- **Bewegungseinschränkung** – Wegpass zum Erkunden fremder Wege
+- **Eigene Plot-Rollen**
 
 ## Installation
 
-### Prerequisites
-
+### Voraussetzungen
 - Java 17+
 - Maven 3.8+
-- A Paper server compatible with `1.16.5`
+- Paper Server kompatibel mit `1.16.5`
 
-### Build from Source
-
+### Aus Source bauen
 ```bash
 mvn clean package
 ```
+Die Jar liegt danach in `target/`.
 
-The plugin jar will be generated in `target/`.
+### Auf Paper deployen
+1. Generierte Jar in `plugins/` kopieren
+2. Server starten / restarten
+3. Configs unter `plugins/Streuland/` anpassen
 
-### Deploy to Paper
+## Nutzung
 
-1. Copy the generated jar into your server `plugins/` directory.
-2. Start or restart the server.
-3. Edit generated plugin config files under `plugins/Streuland/` as needed.
+Wichtigste Befehle:
 
-## Usage
+- `/plot create` – neues Grundstück erstellen
+- `/plot info` – Infos zum aktuellen Plot
+- `/plot trust <Spieler>` / `/plot untrust <Spieler>` – Mitarbeiter verwalten
+- `/plot list` – eigene Plots
+- `/plot home` – zum Plot teleportieren
+- `/plot wegpass` – Bewegungspass kaufen für fremde Pfade
+- `/district ...` – District Verwaltung
+- `/plotapprove ...` – Anträge prüfen
+- `/streuland ...` – Diagnose & Wartung
+- `/clan ...` – Clan System (erstellen, beitreten, Diplomatie, Wars)
+- `/markt ...` – Marktstände (mieten, Preis, Info)
 
-Common commands:
+Mehr in `docs/examples/command-flows.md` und `docs/features/one-chunk-civilization.md`.
 
-- `/plot create` – create a new plot
-- `/plot info` – inspect current plot data
-- `/plot trust <player>` and `/plot untrust <player>` – manage collaborators
-- `/plot list` – list owned plots
-- `/plot home` – teleport to plot
-- `/plot wegpass` – buy a movement pass to explore foreign paths
-- `/district ...` – district management operations
-- `/plotapprove ...` – review approval requests
-- `/streuland ...` – diagnostics and maintenance commands
-- `/clan ...` – clan system (create, join, diplomacy, wars)
-- `/markt ...` – market stand management (rent, price, info)
-
-See additional command-flow documentation in `docs/examples/command-flows.md` and the feature guide in `docs/features/one-chunk-civilization.md`.
-
-## Development Setup
+## Development
 
 ```bash
-git clone <your-fork-or-repo-url>
+git clone <dein-fork>
 cd streuland
 mvn clean verify
 ```
 
-Recommended:
+IDE mit Maven Import nutzen. `target/` ist ignoriert – keine Binaries committen.
 
-- Use an IDE with Maven import enabled.
-- Keep all generated build output local (`target/` is intentionally ignored).
+## Konfiguration
 
-## Configuration
+Wird beim ersten Start aus `src/main/resources/` nach `plugins/Streuland/` generiert:
 
-Primary configuration files are packaged from `src/main/resources/` and generated into the plugin data folder on first run:
-
-- `config.yml` (plot, protection, roles, clan war, market, path and feature settings)
-- `world_main.yml`
-- `world_nether.yml`
-- `world_end.yml`
+- `config.yml` – Plot, Schutz, Rollen, Clan War, Markt, Wege
+- `world_main.yml`, `world_nether.yml`, `world_end.yml`
 - `plot-upgrades.yml`
 - `quests.yml`
 - `messages_en.yml` / `messages_de.yml`
 
-See `docs/features/one-chunk-civilization.md` for the clan, war, wegpass and market-stand configuration keys.
+Siehe `docs/features/one-chunk-civilization.md` für Clan, War, Wegpass und Markt Konfig.
 
-## Build / Run Instructions
+## Build / Run
 
-- Build jar: `mvn clean package`
-- Run test suite: `mvn test`
-- Run full verification: `mvn clean verify`
+- Jar bauen: `mvn clean package`
+- Tests: `mvn test`
+- Full Check: `mvn clean verify`
 
-No compiled artifacts are stored in version control. Regenerate binaries locally using the Maven commands above.
+## Fehlersuche
 
-## Troubleshooting
+- **Dependency Fehler**: Internetzugang zu Maven Repos in `pom.xml` prüfen
+- **Plugin lädt nicht**: Paper Version prüfen, Logs nach fehlenden Soft-Dependencies checken (`Vault`, `WorldGuard`)
+- **Config kaputt**: Ungültige Configs in `plugins/Streuland/` löschen und neu generieren lassen
+- **Economy geht nicht (Wegpass, Markt, War Rewards)**: Vault-kompatibles Economy Plugin installieren, ohne geht es nicht
 
-- **Dependency resolution fails**: ensure network access to Maven repositories listed in `pom.xml`.
-- **Plugin not loading**: verify Paper version compatibility and check startup logs for missing soft dependencies (`Vault`, `WorldGuard`).
-- **Config issues**: delete invalid generated config files in `plugins/Streuland/` and restart to regenerate defaults.
-- **Economy features not working (wegpass, market stands, war rewards)**: install and enable a Vault-compatible economy plugin; without it these features are disabled.
+## Doku
 
-## Documentation
+- `docs/README.md` – Index
+- `docs/features/one-chunk-civilization.md` – Clan, Chunk Wars, Wegpass, Markt
+- `docs/architecture/system-overview.md` – Architektur
+- `docs/architecture/code-walkthrough.md` – Code Übersicht
+- `docs/api/core-components.md` – Module
 
-- `docs/README.md` – documentation index
-- `docs/features/one-chunk-civilization.md` – clan system, chunk wars, wegpass, market stands
-- `docs/architecture/system-overview.md` – architecture map
-- `docs/architecture/code-walkthrough.md` – source orientation
-- `docs/api/core-components.md` – module responsibilities
-- `docs/examples/command-flows.md` – command examples
+## Mitwirken
 
-## Contributing
+Siehe [CONTRIBUTING.md](CONTRIBUTING.md).
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+## Lizenz
 
-## Code of Conduct
+GNU GPLv3 – siehe [LICENSE](LICENSE).
+Das ist jetzt viel nahbarer – du erklärst nicht nur WAS es tut, sondern WARUM es existiert. Das zieht auf Spigot / GitHub viel mehr als eine trockene Feature-Liste.
 
-See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
-
-## License
-
-GNU GPLv3. See [LICENSE](LICENSE).
+Willst du dass ich dir das noch auf `drosemann/streuland` als PR-fertige README formatiere und die `pom.xml` Beschreibung auch auf Deutsch angleiche?
